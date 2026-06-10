@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>QuotaPath Face Quiz</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 36px 32px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+
+  .logo { font-size: 52px; margin-bottom: 14px; }
+  h1 { font-size: 26px; font-weight: 800; color: #111; margin-bottom: 6px; }
+  .tagline { color: #666; font-size: 15px; margin-bottom: 4px; }
+  .team-meta { color: #aaa; font-size: 13px; margin-bottom: 28px; }
+
+  .btn {
+    display: inline-block;
+    background: #00b386;
+    color: #fff;
+    border: none;
+    padding: 13px 36px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    box-shadow: 0 4px 14px rgba(0,179,134,0.3);
+  }
+  .btn:hover { background: #009970; transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+
+  .quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .q-label { font-size: 13px; color: #999; font-weight: 500; }
+  .score-pill {
+    background: #f0fdf8;
+    color: #00b386;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .progress-track {
+    height: 5px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00b386, #00d4a0);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Photo ring with initials fallback */
+  .photo-ring {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 20px;
+    border: 4px solid #f0fdf8;
+    box-shadow: 0 6px 24px rgba(0,179,134,0.15);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .photo-ring .initials-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .photo-ring img {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+  .photo-ring img.hidden { display: none; }
+
+  .who-label {
+    font-size: 17px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 18px;
+  }
+
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    margin-bottom: 16px;
+  }
+  .choice {
+    padding: 12px 8px;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.35;
+  }
+  .choice:hover:not(:disabled) { border-color: #00b386; background: #f0fdf8; color: #00b386; }
+  .choice.correct  { border-color: #22c55e !important; background: #f0fdf4 !important; color: #16a34a !important; font-weight: 700; }
+  .choice.wrong    { border-color: #ef4444 !important; background: #fef2f2 !important; color: #dc2626 !important; }
+  .choice.reveal   { border-color: #22c55e !important; background: #f0fdf4 !important; color: #16a34a !important; font-weight: 700; }
+  .choice:disabled { cursor: default; }
+
+  .feedback { min-height: 22px; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .feedback.ok { color: #22c55e; }
+  .feedback.no { color: #ef4444; }
+
+  .btn-next {
+    background: #111; color: #fff; border: none;
+    padding: 11px 28px; border-radius: 50px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s, transform 0.15s; margin-top: 4px;
+  }
+  .btn-next:hover { background: #333; transform: translateY(-1px); }
+
+  .result-emoji { font-size: 54px; margin-bottom: 10px; }
+  .result-score { font-size: 54px; font-weight: 900; color: #111; line-height: 1; margin-bottom: 6px; }
+  .result-score .accent { color: #00b386; }
+  .result-msg { color: #666; font-size: 15px; margin-bottom: 20px; }
+  .result-list {
+    text-align: left; max-height: 220px; overflow-y: auto;
+    border-top: 1px solid #f0f0f0; padding-top: 8px; margin-bottom: 24px;
+  }
+  .result-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f9f9f9;
+  }
+  .result-thumb {
+    width: 26px; height: 26px; border-radius: 50%;
+    flex-shrink: 0; overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+  }
+  .result-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .result-row.ok { color: #16a34a; }
+  .result-row.no { color: #dc2626; }
+</style>
+</head>
+<body>
+
+<div id="start" class="screen active">
+  <div class="card">
+    <div class="logo">🏢</div>
+    <h1>Face Quiz</h1>
+    <p class="tagline">Put a face to every name on the team</p>
+    <p class="team-meta">72 QuotaPath teammates &nbsp;·&nbsp; 10 questions per round</p>
+    <button class="btn" onclick="startQuiz()">Let's Go →</button>
+  </div>
+</div>
+
+<div id="quiz" class="screen">
+  <div class="card">
+    <div class="quiz-header">
+      <span class="q-label">Question <span id="qNum">1</span> / <span id="qTotal">10</span></span>
+      <span class="score-pill">★ <span id="scoreDisplay">0</span></span>
+    </div>
+    <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="photo-ring" id="photoRing">
+      <div class="initials-fallback" id="initialsEl"></div>
+      <img id="quizPhoto" src="" alt="" />
+    </div>
+    <p class="who-label">Who is this?</p>
+    <div class="choices" id="choicesEl"></div>
+    <div class="feedback" id="feedbackEl"></div>
+    <button class="btn-next" id="nextBtn" style="display:none" onclick="advance()">Next →</button>
+  </div>
+</div>
+
+<div id="results" class="screen">
+  <div class="card">
+    <div class="result-emoji" id="resultEmoji"></div>
+    <div class="result-score"><span class="accent" id="finalScore">0</span>/<span id="finalTotal">10</span></div>
+    <p class="result-msg" id="resultMsg"></p>
+    <div class="result-list" id="resultList"></div>
+    <button class="btn" onclick="startQuiz()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ── Avatar color palette ──
+const COLORS = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#00b386','#607d8b'];
+function colorFor(name) { let h=0; for(let c of name) h=(h<<5)-h+c.charCodeAt(0); return COLORS[Math.abs(h)%COLORS.length]; }
+function initials(name) { return name.split(' ').slice(0,2).map(w=>w[0]).join(''); }
+
+// ── All QuotaPath employees ──
+const TEAM = [
+  { name: 'AJ Bruno',           photo: 'https://avatars.slack-edge.com/2026-02-12/10509913848273_f489c5da3c36bf367362_512.png' },
+  { name: 'Cole Evetts',        photo: 'https://avatars.slack-edge.com/2021-12-07/2824434265697_8b5d0884c04b32b18cda_512.png' },
+  { name: 'Eric Heydenberk',    photo: 'https://avatars.slack-edge.com/2025-08-15/9358888938245_5ec4827334c687d993a0_512.jpg' },
+  { name: 'Graham Collins',     photo: 'https://avatars.slack-edge.com/2026-02-11/10483208698291_6484936ecc5849eafd8a_512.jpg' },
+  { name: 'Marguerite Hamilton',photo: 'https://avatars.slack-edge.com/2025-03-28/8695572803200_d2688eb54b86071297f2_512.png' },
+  { name: 'James Truty',        photo: 'https://avatars.slack-edge.com/2026-02-10/10481894220902_def935f71bcdaba66a37_512.jpg' },
+  { name: 'Brandon Smith',      photo: 'https://avatars.slack-edge.com/2025-10-16/9714910767188_1958724b1f231cc64034_512.jpg' },
+  { name: 'Meg Rodriguez',      photo: 'https://avatars.slack-edge.com/2026-05-15/11142902318081_83b887e7d20989e0af61_512.jpg' },
+  { name: 'Samantha Manley',    photo: 'https://avatars.slack-edge.com/2021-12-08/2829260953809_0ced7fc4e07ef2daa01c_512.png' },
+  { name: 'Kiril Zvezdarov',    photo: 'https://avatars.slack-edge.com/2021-12-16/2851264560563_7278eca34d20ad5a93c7_512.jpg' },
+  { name: 'Michael Davenport',  photo: 'https://avatars.slack-edge.com/2026-04-16/10928137155875_f220ab427ac335a23ccb_512.jpg' },
+  { name: 'Hector Fourzan',     photo: 'https://avatars.slack-edge.com/2023-07-06/5540845251780_894810fc80a672530072_512.jpg' },
+  { name: 'Carrie Carroll',     photo: 'https://avatars.slack-edge.com/2026-02-09/10501457778672_4e2b0d5280dda0f5c139_512.jpg' },
+  { name: 'Josh Kamenicky',     photo: 'https://avatars.slack-edge.com/2022-02-18/3115800971047_5c1300f61a68508c1cbf_512.png' },
+  { name: 'Ashley Sheppard',    photo: 'https://avatars.slack-edge.com/2026-04-03/10870716384288_85a6da28f35ca9b3dfb2_512.png' },
+  { name: "Kelly O'Halloran",   photo: 'https://avatars.slack-edge.com/2026-05-28/11235982276049_3e15fbb48661c25f0fcb_512.png' },
+  { name: 'Kevin Denny',        photo: 'https://avatars.slack-edge.com/2026-05-01/11031891857395_8bcac33543ab4de276bf_512.png' },
+  { name: 'Becky Chen',         photo: 'https://avatars.slack-edge.com/2026-02-09/10501532613568_88e41b985d6a4b500ca8_512.jpg' },
+  { name: 'Ryan Milligan',      photo: 'https://avatars.slack-edge.com/2021-12-07/2814961916196_37232a6aedbc5caf53b5_512.jpg' },
+  { name: 'Patty Williams',     photo: 'https://avatars.slack-edge.com/2026-02-04/10455495389985_ebc99e347292995b5a6c_512.jpg' },
+  { name: 'Tyler Rody',         photo: 'https://avatars.slack-edge.com/2025-11-20/9947760236823_f435904509442fe09735_512.png' },
+  { name: 'Evan Friedenberg',   photo: 'https://avatars.slack-edge.com/2026-02-04/10456681987873_217fb8857df36709553e_512.png' },
+  { name: 'Jonathan Mann',      photo: 'https://avatars.slack-edge.com/2022-02-22/3127758356439_32fb3665417c83f61aa0_512.jpg' },
+  { name: 'Tara Wasenius',      photo: 'https://avatars.slack-edge.com/2022-06-07/3619436752695_8c12ad9d2e3c914404b7_512.jpg' },
+  { name: 'Matt Kerlin',        photo: 'https://avatars.slack-edge.com/2022-06-01/3633672785888_3e4c39274c1c4673d5dd_512.png' },
+  { name: 'Coby Burckard',      photo: 'https://avatars.slack-edge.com/2026-02-06/10486747970160_ab440f1dad01cbd7805d_512.jpg' },
+  { name: 'Rinat Gatyatullin',  photo: 'https://avatars.slack-edge.com/2025-03-28/8670543107669_0501cde1e80f134527e9_512.jpg' },
+  { name: 'Laura Arbilla',      photo: 'https://avatars.slack-edge.com/2024-07-26/7484270402050_b820209854b48c494c65_512.jpg' },
+  { name: 'Richard Lam',        photo: 'https://avatars.slack-edge.com/2022-09-19/4101757566210_b2946dd7dfd4d274106f_512.jpg' },
+  { name: "Tom O'Hara",         photo: 'https://avatars.slack-edge.com/2022-10-19/4244245319813_4b1fd6b59577dd0a29f6_512.png' },
+  { name: 'Gabby Kirlew',       photo: 'https://avatars.slack-edge.com/2026-02-25/10612482237184_d42f5ef41b8d4609fa5c_512.jpg' },
+  { name: 'Betsy Wilson',       photo: 'https://avatars.slack-edge.com/2026-02-07/10463364655542_9fbaf11da35b15b20255_512.png' },
+  { name: 'Sam Thibault',       photo: 'https://avatars.slack-edge.com/2026-05-27/11221003054614_a135f5fa23e93d8403aa_512.png' },
+  { name: 'Mitch McAllister',   photo: 'https://avatars.slack-edge.com/2026-05-07/11071621999683_5013e5e6e0f9a23c3ed3_512.png' },
+  { name: 'Justin Baza',        photo: 'https://avatars.slack-edge.com/2024-02-20/6683789733953_5ef4b4defb2588c8a4a8_512.png' },
+  { name: 'Travis Northup',     photo: 'https://avatars.slack-edge.com/2025-05-08/8871946879156_545fd0b0b997a1100548_512.png' },
+  { name: 'Wyndham Hudson',     photo: 'https://avatars.slack-edge.com/2026-05-26/11213083671877_f629c97fd3966b78ac9b_512.png' },
+  { name: 'Sam LeFebre',        photo: 'https://avatars.slack-edge.com/2026-02-09/10502167574032_e966ef3783e616d6c695_512.jpg' },
+  { name: 'Vince Villacorta',   photo: 'https://avatars.slack-edge.com/2024-12-02/8100265885463_3360751106eb16033ec7_512.png' },
+  { name: 'Charlotte Griffiths',photo: 'https://avatars.slack-edge.com/2026-02-13/10501275195059_155a2f0ffe8294e56629_512.jpg' },
+  { name: 'Alexa Settlemire',   photo: 'https://avatars.slack-edge.com/2026-02-12/10486920934359_3724a73022fd74d80c5e_512.png' },
+  { name: 'Anderson Salom',     photo: 'https://avatars.slack-edge.com/2026-02-09/10471098429254_be2f6c564ca83736350a_512.png' },
+  { name: 'Josh Gates',         photo: 'https://avatars.slack-edge.com/2025-04-30/8832789278275_785020a91b24b8f22a76_512.png' },
+  { name: 'Laura Aleman',       photo: 'https://avatars.slack-edge.com/2025-05-28/8967287504164_b33048bcfb4fab7fc7c3_512.png' },
+  { name: 'Juan Cisneros',      photo: 'https://avatars.slack-edge.com/2025-05-28/8950488932327_67d04177e62012298f6c_512.jpg' },
+  { name: 'Victor Ospino',      photo: 'https://avatars.slack-edge.com/2026-02-04/10473196656384_dd39801c5a38a41dac92_512.png' },
+  { name: 'Andres Cortez',      photo: 'https://avatars.slack-edge.com/2025-10-01/9617503376645_c21e4142528041ad06f0_512.png' },
+  { name: 'Mimi Bolden-Roberts',photo: 'https://avatars.slack-edge.com/2025-07-29/9286610888657_479eda5b755db82f44d1_512.jpg' },
+  { name: 'Abir Islam',         photo: 'https://avatars.slack-edge.com/2026-05-17/11150470525778_877b8f6422786d96d6bf_512.jpg' },
+  { name: 'Alex Smith',         photo: 'https://avatars.slack-edge.com/2026-02-04/10437989813493_c83e79238767afe233ea_512.png' },
+  { name: 'Andres Hernandez',   photo: 'https://avatars.slack-edge.com/2026-02-27/10626990853584_bb645a6533f8ca9771dd_512.jpg' },
+  { name: 'Alex Lindsey',       photo: 'https://avatars.slack-edge.com/2025-10-25/9774011241124_ebc7665887ac29ec6b09_512.png' },
+  { name: 'Deja Hughes',        photo: 'https://avatars.slack-edge.com/2025-11-11/9889744893011_348a1c5f15020572d9e1_512.jpg' },
+  { name: 'Eric McElwee',       photo: 'https://avatars.slack-edge.com/2025-11-11/9891451033302_0bfdeece74287bac4a82_512.png' },
+  { name: 'Genar Mendez',       photo: 'https://avatars.slack-edge.com/2025-11-09/9908103254448_b1e18189a9f64de8d185_512.jpg' },
+  { name: 'Dan Allen',          photo: 'https://avatars.slack-edge.com/2025-11-11/9885869489971_77448290ac95b4710cb4_512.jpg' },
+  { name: 'Gabby Cervantes',    photo: 'https://avatars.slack-edge.com/2025-12-08/10089320425809_0084a47332d8f039d4f6_512.png' },
+  { name: 'Anthony So',         photo: 'https://avatars.slack-edge.com/2026-03-21/10745815692278_81e1ce6bc11eaee03f63_512.jpg' },
+  { name: 'Allison Kim',        photo: 'https://avatars.slack-edge.com/2026-02-04/10441413644725_8f0816277f211d288736_512.jpg' },
+  { name: 'Taylor Bell',        photo: 'https://avatars.slack-edge.com/2026-01-05/10227774795171_1a06340c4fb95e259c3a_512.jpg' },
+  { name: 'Eric Steiner',       photo: 'https://avatars.slack-edge.com/2026-02-04/10447471745732_fdcadb5dfc20bb47f655_512.jpg' },
+  { name: 'Seth Costello',      photo: 'https://avatars.slack-edge.com/2026-01-05/10234842675442_ed24c29a69e5a66c4a4e_512.png' },
+  { name: 'Jesse Cooper',       photo: 'https://avatars.slack-edge.com/2026-01-19/10330829356194_53da2d50db6f1e6c0c4c_512.jpg' },
+  { name: 'Manushi Oza',        photo: 'https://avatars.slack-edge.com/2026-01-19/10324469161315_2434b49a6092fb47e922_512.jpg' },
+  { name: "Chester O'Neill",    photo: 'https://avatars.slack-edge.com/2026-03-30/10834931201376_1dba4017b3cd96a6ed50_512.jpg' },
+  { name: 'Anna Conaway',       photo: 'https://avatars.slack-edge.com/2026-04-01/10810100829543_aad093b4818e4ffe8acb_512.jpg' },
+  { name: 'Andrew Nguyen',      photo: 'https://avatars.slack-edge.com/2026-03-30/10810717895540_aeff4c53e67d3edd2799_512.jpg' },
+  { name: 'Bill Liu',           photo: 'https://avatars.slack-edge.com/2026-03-30/10810668473060_b6c0aa65698e08539cc6_512.png' },
+  { name: 'Richard Harris',     photo: 'https://avatars.slack-edge.com/2026-05-11/11103171289622_9e946f59fc184f263e2b_512.png' },
+  { name: 'Dan Heck',           photo: 'https://avatars.slack-edge.com/2026-05-04/11080176324000_1fd7bef6625fb0fec705_512.png' },
+  { name: 'Carly Curry',        photo: 'https://avatars.slack-edge.com/2026-05-04/11056999819780_23279b97a712f22e75dd_512.png' },
+  { name: 'Alex Phan',          photo: 'https://avatars.slack-edge.com/2026-05-05/11072411869601_1c81aa67586434b5fb11_512.png' },
+];
+
+// ── State ──
+let questions=[], currentQ=0, score=0, roundResults=[], answered=false;
+
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startQuiz() {
+  questions=shuffle(TEAM).slice(0,10);
+  currentQ=0; score=0; roundResults=[];
+  document.getElementById('qTotal').textContent=questions.length;
+  document.getElementById('finalTotal').textContent=questions.length;
+  show('quiz');
+  renderQ();
+}
+
+function setPhoto(person) {
+  const ring = document.getElementById('photoRing');
+  const img  = document.getElementById('quizPhoto');
+  const ini  = document.getElementById('initialsEl');
+
+  // Set background color for initials fallback
+  ring.style.background = colorFor(person.name);
+  ini.textContent = initials(person.name);
+
+  // Try loading the real photo on top
+  img.classList.remove('hidden');
+  img.onerror = () => img.classList.add('hidden');
+  img.src = person.photo;
+}
+
+function renderQ() {
+  answered=false;
+  const q=questions[currentQ], total=questions.length;
+  document.getElementById('qNum').textContent=currentQ+1;
+  document.getElementById('scoreDisplay').textContent=score;
+  document.getElementById('progressBar').style.width=`${(currentQ/total)*100}%`;
+  document.getElementById('feedbackEl').textContent='';
+  document.getElementById('feedbackEl').className='feedback';
+  document.getElementById('nextBtn').style.display='none';
+
+  setPhoto(q);
+
+  const wrongs=shuffle(TEAM.filter(p=>p.name!==q.name)).slice(0,3);
+  const opts=shuffle([q,...wrongs]);
+  const el=document.getElementById('choicesEl');
+  el.innerHTML='';
+  opts.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='choice';
+    btn.textContent=opt.name;
+    btn.dataset.name=opt.name;
+    btn.onclick=()=>pick(opt.name===q.name,btn,q.name);
+    el.appendChild(btn);
+  });
+}
+
+function pick(correct,btn,correctName) {
+  if(answered)return;
+  answered=true;
+  if(correct)score++;
+  roundResults.push({...questions[currentQ],correct});
+  const fb=document.getElementById('feedbackEl');
+  if(correct){
+    btn.classList.add('correct');
+    fb.textContent='✓ Correct!'; fb.className='feedback ok';
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent='✗ Not quite!'; fb.className='feedback no';
+    document.querySelectorAll('.choice').forEach(b=>{if(b.dataset.name===correctName)b.classList.add('reveal');});
+  }
+  document.querySelectorAll('.choice').forEach(b=>b.disabled=true);
+  document.getElementById('scoreDisplay').textContent=score;
+  const nb=document.getElementById('nextBtn');
+  nb.textContent=currentQ===questions.length-1?'See Results →':'Next →';
+  nb.style.display='inline-block';
+}
+
+function advance() {
+  currentQ++;
+  if(currentQ>=questions.length)showResults();
+  else renderQ();
+}
+
+function showResults() {
+  const total=questions.length, pct=score/total;
+  let emoji,msg;
+  if(pct===1){emoji='🏆';msg='Perfect score! You really know your team!';}
+  else if(pct>=0.8){emoji='🎉';msg='Great job — you know your teammates well!';}
+  else if(pct>=0.6){emoji='👍';msg="Solid! A few more Slack convos and you'll nail it.";}
+  else if(pct>=0.4){emoji='🤔';msg='Getting there — maybe time to do some intros!';}
+  else{emoji='😅';msg='Time to schedule some 1:1s!';}
+
+  document.getElementById('resultEmoji').textContent=emoji;
+  document.getElementById('finalScore').textContent=score;
+  document.getElementById('resultMsg').textContent=msg;
+  document.getElementById('progressBar').style.width='100%';
+
+  document.getElementById('resultList').innerHTML=roundResults.map(r=>`
+    <div class="result-row ${r.correct?'ok':'no'}">
+      <span>${r.correct?'✅':'❌'}</span>
+      <div class="result-thumb" style="background:${colorFor(r.name)}">
+        <span style="position:relative;z-index:1">${initials(r.name)}</span>
+        <img src="${r.photo}" onerror="this.style.display='none'" />
+      </div>
+      <span>${r.name}</span>
+    </div>
+  `).join('');
+  show('results');
+}
+</script>
+</body>
+</html>
